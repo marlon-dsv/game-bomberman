@@ -9,6 +9,7 @@
 
 using namespace std;
 
+
 // ==================== MENU ====================
 
 int Menu() {
@@ -151,6 +152,10 @@ bool TentarNovamente() {
 int main()
 {
 
+    // Inicializa o gerador de numeros aleatorios uma unica vez.
+    srand(static_cast<unsigned int>(time(NULL)));
+
+
     // ==================== INICIO DO TRECHO QUE NAO PODE SER MODIFICADO ====================.
 
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -245,15 +250,141 @@ int main()
         int y = 1;
 
 
+        // ==================== MAPA ALEATORIO ====================
+
+        // Quantidade de blocos destrutiveis que serao criados.
+        const int QUANTIDADE_BLOCOS = 25;
+
+        // Primeiro transforma todos os blocos destrutiveis
+        // do mapa original em espacos livres.
+        for (int i = 0; i < LINHAS; i++)
+        {
+            for (int j = 0; j < COLUNAS; j++)
+            {
+                if (m[i][j] == 2)
+                {
+                    m[i][j] = 0;
+                }
+            }
+        }
+
+        // Garante que o jogador tenha espaco para sair
+        // do local onde nasceu.
+        m[1][1] = 0;
+        m[1][2] = 0;
+        m[2][1] = 0;
+        m[1][3] = 0;
+        m[3][1] = 0;
+
+        // Sorteia novas posicoes para os blocos.
+        int blocosGerados = 0;
+
+        while (blocosGerados < QUANTIDADE_BLOCOS)
+        {
+            int aleatorioX = 1 + rand() % (LINHAS - 2);
+            int aleatorioY = 1 + rand() % (COLUNAS - 2);
+
+            // Verifica se a casa esta livre.
+            if (m[aleatorioX][aleatorioY] == 0)
+            {
+                // Nao coloca bloco nas casas proximas
+                // ao nascimento do jogador.
+                bool pertoDoJogador = false;
+
+                if (aleatorioX == 1 && aleatorioY == 1)
+                    pertoDoJogador = true;
+
+                if (aleatorioX == 1 && aleatorioY == 2)
+                    pertoDoJogador = true;
+
+                if (aleatorioX == 2 && aleatorioY == 1)
+                    pertoDoJogador = true;
+
+                if (aleatorioX == 1 && aleatorioY == 3)
+                    pertoDoJogador = true;
+
+                if (aleatorioX == 3 && aleatorioY == 1)
+                    pertoDoJogador = true;
+
+                if (!pertoDoJogador)
+                {
+                    m[aleatorioX][aleatorioY] = 2;
+                    blocosGerados++;
+                }
+            }
+        }
+
+
         // ==================== FANTASMAS ====================
 
         const int NUM_FANTASMAS = 5;
 
-        int fantasmaX[NUM_FANTASMAS] = { 1, 4, 7, 7, 9 };
+        int fantasmaX[NUM_FANTASMAS];
+        int fantasmaY[NUM_FANTASMAS];
 
-        int fantasmaY[NUM_FANTASMAS] = { 11, 7, 11, 1, 7 };
+        bool fantasmaAtivo[NUM_FANTASMAS] =
+        {
+            true, true, true, true, true
+        };
 
-        bool fantasmaAtivo[NUM_FANTASMAS] = { true, true, true, true, true };
+
+        // ==================== NASCIMENTO ALEATORIO DOS FANTASMAS ====================
+
+        for (int f = 0; f < NUM_FANTASMAS; f++)
+        {
+            bool posicaoValida = false;
+
+            while (!posicaoValida)
+            {
+                int novoX = 1 + rand() % (LINHAS - 2);
+                int novoY = 1 + rand() % (COLUNAS - 2);
+
+                // Comeca considerando a posicao valida.
+                posicaoValida = true;
+
+                // Fantasma nao pode nascer em bloco.
+                if (m[novoX][novoY] != 0)
+                {
+                    posicaoValida = false;
+                }
+
+                // Fantasma nao pode nascer em cima do jogador.
+                if (novoX == x && novoY == y)
+                {
+                    posicaoValida = false;
+                }
+
+                // Fantasma nao pode nascer nas casas
+                // imediatamente proximas do jogador.
+                if (novoX == 1 && novoY == 2)
+                {
+                    posicaoValida = false;
+                }
+
+                if (novoX == 2 && novoY == 1)
+                {
+                    posicaoValida = false;
+                }
+
+                // Verifica se outro fantasma ja esta nessa casa.
+                for (int outro = 0; outro < f; outro++)
+                {
+                    if (fantasmaX[outro] == novoX &&
+                        fantasmaY[outro] == novoY)
+                    {
+                        posicaoValida = false;
+                    }
+                }
+
+                // Se a posicao passou por todas as verificacoes,
+                // salva a posicao do fantasma.
+                if (posicaoValida)
+                {
+                    fantasmaX[f] = novoX;
+                    fantasmaY[f] = novoY;
+                }
+            }
+        }
 
 
         // ==================== TEMPO DOS FANTASMAS ====================
@@ -299,7 +430,6 @@ int main()
 
         // ==================== GERACAO DE ALEATORIOS ====================
 
-        srand(time(NULL));
         system("cls");
 
         // Monta os caracteres e as cores na memoria antes de desenhar.
@@ -308,7 +438,7 @@ int main()
         COORD tamanhoTela = { COLUNAS * 2, LINHAS + 2 };
         COORD origemTela = { 0, 0 };
 
-        // Controla a velocidade de atualizaÃ§Ã£o do jogo
+        // Controla a velocidade de atualizaÃ§ao do jogo
         chrono::steady_clock::time_point inicioPartida =
             chrono::steady_clock::now();
 
@@ -570,7 +700,7 @@ int main()
 
             chrono::milliseconds tempoFantasma;
 
-            tempoFantasma =                                   // GUARDA DURACAO DO TEMPO DA MOV DO FANTASMA
+            tempoFantasma =
                 chrono::duration_cast<chrono::milliseconds>
                 (agora - ultimoMovimentoFantasma);
 
@@ -584,33 +714,80 @@ int main()
                     if (!fantasmaAtivo[f])
                         continue;
 
-                    int novoX = fantasmaX[f];
-                    int novoY = fantasmaY[f];
 
-                    int direcao = rand() % 4;
+                    // ==================================================
+                    // TENTA ATE 4 DIRECOES DIFERENTES
+                    // ==================================================
 
+                    bool conseguiuMover = false;
 
-                    if (direcao == 0)
-                        novoX--;
+                    // Cria uma ordem aleatoria das quatro direcoes.
+                    int direcoes[4] = { 0, 1, 2, 3 };
 
-                    else if (direcao == 1)
-                        novoX++;
-
-                    else if (direcao == 2)
-                        novoY--;
-
-                    else
-                        novoY++;
-
-
-                    // ========== VERFICA SE FANTASMA PODE SE MOVER PARA OUTRA DIRECAO ========
-
-                    if (novoX >= 0 &&
-                        novoX < LINHAS &&
-                        novoY >= 0 &&
-                        novoY < COLUNAS)
+                    // Embaralha as direcoes.
+                    for (int i = 3; i > 0; i--)
                     {
-                        // Verifica se outro fantasma ja ocupa a casa escolhida.
+                        int j = rand() % (i + 1);
+
+                        int temp = direcoes[i];
+                        direcoes[i] = direcoes[j];
+                        direcoes[j] = temp;
+                    }
+
+
+                    // Tenta cada uma das quatro direcoes.
+                    for (int tentativa = 0; tentativa < 4; tentativa++)
+                    {
+                        int direcao = direcoes[tentativa];
+
+                        int novoX = fantasmaX[f];
+                        int novoY = fantasmaY[f];
+
+
+                        if (direcao == 0)
+                            novoX--;
+
+                        else if (direcao == 1)
+                            novoX++;
+
+                        else if (direcao == 2)
+                            novoY--;
+
+                        else
+                            novoY++;
+
+
+                        // ========== VERIFICA LIMITES DO MAPA ==========
+
+                        if (novoX < 0 ||
+                            novoX >= LINHAS ||
+                            novoY < 0 ||
+                            novoY >= COLUNAS)
+                        {
+                            continue;
+                        }
+
+
+                        // ========== VERIFICA PAREDES E BLOCOS ==========
+
+                        if (m[novoX][novoY] != 0)
+                        {
+                            continue;
+                        }
+
+
+                        // ========== VERIFICA BOMBA ==========
+
+                        if (bombaAtiva &&
+                            novoX == bombaX &&
+                            novoY == bombaY)
+                        {
+                            continue;
+                        }
+
+
+                        // ========== VERIFICA OUTROS FANTASMAS ==========
+
                         bool posicaoOcupada = false;
 
                         for (int outro = 0; outro < NUM_FANTASMAS; outro++)
@@ -625,15 +802,23 @@ int main()
                             }
                         }
 
-                        if (m[novoX][novoY] == 0 &&         // Verifica se a posicao esta livre
-                            !posicaoOcupada &&               // Impede dois fantasmas na mesma casa
-                            !(bombaAtiva &&
-                                novoX == bombaX &&
-                                novoY == bombaY))
+
+                        // Se outro fantasma estiver ocupando
+                        // a casa, tenta outra direcao.
+                        if (posicaoOcupada)
                         {
-                            fantasmaX[f] = novoX;
-                            fantasmaY[f] = novoY;
+                            continue;
                         }
+
+
+                        // ========== MOVE O FANTASMA ==========
+
+                        fantasmaX[f] = novoX;
+                        fantasmaY[f] = novoY;
+
+                        conseguiuMover = true;
+
+                        break;
                     }
                 }
             }
@@ -850,4 +1035,3 @@ int main()
 
     return 0;
 }
-
