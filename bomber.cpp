@@ -29,7 +29,6 @@ int Menu() {
     while (true) {
         cout << "Escolha: ";
 
-        // Le a linha inteira, inclusive quando forem digitadas letras.
         if (!getline(cin, entrada)) {
             return 2;
         }
@@ -252,11 +251,8 @@ int main()
 
         // ==================== MAPA ALEATORIO ====================
 
-        // Quantidade de blocos destrutiveis que serao criados.
         const int QUANTIDADE_BLOCOS = 25;
 
-        // Primeiro transforma todos os blocos destrutiveis
-        // do mapa original em espacos livres.
         for (int i = 0; i < LINHAS; i++)
         {
             for (int j = 0; j < COLUNAS; j++)
@@ -268,15 +264,12 @@ int main()
             }
         }
 
-        // Garante que o jogador tenha espaco para sair
-        // do local onde nasceu.
         m[1][1] = 0;
         m[1][2] = 0;
         m[2][1] = 0;
         m[1][3] = 0;
         m[3][1] = 0;
 
-        // Sorteia novas posicoes para os blocos.
         int blocosGerados = 0;
 
         while (blocosGerados < QUANTIDADE_BLOCOS)
@@ -284,11 +277,8 @@ int main()
             int aleatorioX = 1 + rand() % (LINHAS - 2);
             int aleatorioY = 1 + rand() % (COLUNAS - 2);
 
-            // Verifica se a casa esta livre.
             if (m[aleatorioX][aleatorioY] == 0)
             {
-                // Nao coloca bloco nas casas proximas
-                // ao nascimento do jogador.
                 bool pertoDoJogador = false;
 
                 if (aleatorioX == 1 && aleatorioY == 1)
@@ -339,23 +329,18 @@ int main()
                 int novoX = 1 + rand() % (LINHAS - 2);
                 int novoY = 1 + rand() % (COLUNAS - 2);
 
-                // Comeca considerando a posicao valida.
                 posicaoValida = true;
 
-                // Fantasma nao pode nascer em bloco.
                 if (m[novoX][novoY] != 0)
                 {
                     posicaoValida = false;
                 }
 
-                // Fantasma nao pode nascer em cima do jogador.
                 if (novoX == x && novoY == y)
                 {
                     posicaoValida = false;
                 }
 
-                // Fantasma nao pode nascer nas casas
-                // imediatamente proximas do jogador.
                 if (novoX == 1 && novoY == 2)
                 {
                     posicaoValida = false;
@@ -366,7 +351,6 @@ int main()
                     posicaoValida = false;
                 }
 
-                // Verifica se outro fantasma ja esta nessa casa.
                 for (int outro = 0; outro < f; outro++)
                 {
                     if (fantasmaX[outro] == novoX &&
@@ -376,8 +360,6 @@ int main()
                     }
                 }
 
-                // Se a posicao passou por todas as verificacoes,
-                // salva a posicao do fantasma.
                 if (posicaoValida)
                 {
                     fantasmaX[f] = novoX;
@@ -394,7 +376,7 @@ int main()
         ultimoMovimentoFantasma =
             chrono::steady_clock::now();
 
-        const int TEMPO_FANTASMA = 800;  // 0,8s
+        const int TEMPO_FANTASMA = 800;
 
 
         // ==================== TEMPO DA BOMBA ====================
@@ -407,7 +389,7 @@ int main()
         chrono::steady_clock::time_point inicioBomba;
         inicioBomba = chrono::steady_clock::now();
 
-        const int TEMPO_BOMBA = 2000;  //2 segundos
+        const int TEMPO_BOMBA = 2000;
 
 
         // ==================== TEMPO DA EXPLOSAO ====================
@@ -418,7 +400,7 @@ int main()
 
         inicioExplosao = chrono::steady_clock::now();
 
-        const int TEMPO_EXPLOSAO = 500;   // 0,5s
+        const int TEMPO_EXPLOSAO = 500;
 
         const int ALCANCE = 1;
 
@@ -432,46 +414,81 @@ int main()
 
         system("cls");
 
-        // Monta os caracteres e as cores na memoria antes de desenhar.
         CHAR_INFO tela[LINHAS * COLUNAS] = {};
         CHAR_INFO telaLarga[(LINHAS + 2) * COLUNAS * 2] = {};
         COORD tamanhoTela = { COLUNAS * 2, LINHAS + 2 };
         COORD origemTela = { 0, 0 };
 
-        // Controla a velocidade de atualizaÃ§ao do jogo
         chrono::steady_clock::time_point inicioPartida =
             chrono::steady_clock::now();
 
         chrono::steady_clock::time_point proximoFrame =
             inicioPartida;
 
-        const chrono::microseconds DURACAO_FRAME(33333);   // 30 FPS
+        const chrono::microseconds DURACAO_FRAME(33333);
 
 
-        // ==================== LOOP  ====================
+        // ==================== LOOP ====================
 
         while (true) {
             chrono::steady_clock::time_point agoraFrame =
                 chrono::steady_clock::now();
 
             if (agoraFrame < proximoFrame) {
-                Sleep(1);         //DICA PRA CONTROLAR OS FRAMES
+                Sleep(1);
                 continue;
             }
 
             proximoFrame = agoraFrame + DURACAO_FRAME;
 
 
-            // ==================== DESENHA O MAPA + CORES COM PERSOAGEM, FANTASMAS, BOMBA ====================
+            // ==================== DESENHA O MAPA + CORES ====================
 
             for (int i = 0; i < LINHAS; i++) {
                 for (int j = 0; j < COLUNAS; j++) {
 
                     CHAR_INFO& celula = tela[i * COLUNAS + j];
 
-                    if (i == x && j == y) {
+                    // ==================================================
+                    // VERIFICA SE O JOGADOR ESTA SOBRE A BOMBA
+                    // ==================================================
+
+                    bool jogadorSobreBomba =
+                        bombaAtiva &&
+                        i == x &&
+                        j == y &&
+                        x == bombaX &&
+                        y == bombaY;
+
+                    // ==================================================
+                    // PISCAR ENTRE JOGADOR E BOMBA
+                    // ==================================================
+
+                    bool mostrarJogador =
+                        jogadorSobreBomba &&
+                        ((chrono::duration_cast<chrono::milliseconds>(
+                            chrono::steady_clock::now() - inicioBomba
+                        ).count() / 200) % 2 == 0);
+
+
+                    if (i == x && j == y && !jogadorSobreBomba)
+                    {
                         celula.Attributes = 32;
                         celula.Char.AsciiChar = 'J';
+                    }
+
+                    else if (jogadorSobreBomba && mostrarJogador)
+                    {
+                        // Mostra o jogador.
+                        celula.Attributes = 32;
+                        celula.Char.AsciiChar = 'J';
+                    }
+
+                    else if (jogadorSobreBomba && !mostrarJogador)
+                    {
+                        // Mostra a bomba.
+                        celula.Attributes = 46;
+                        celula.Char.AsciiChar = '@';
                     }
 
                     else {
@@ -493,12 +510,24 @@ int main()
 
 
                         if (!desenhouFantasma) {
+
+                            // ==================================================
+                            // EXPLOSAO VERMELHA COM #
+                            // ==================================================
+
                             if (explosaoAtiva && explosao[i][j]) {
-                                celula.Attributes = 78;
-                                celula.Char.AsciiChar = char(177);
+
+                                // Fundo vermelho + texto vermelho claro.
+                                celula.Attributes = 68;
+
+                                // Mostra # no lugar do fogo.
+                                celula.Char.AsciiChar = '#';
                             }
 
-                            else if (bombaAtiva && i == bombaX && j == bombaY) {
+                            else if (bombaAtiva &&
+                                     i == bombaX &&
+                                     j == bombaY) {
+
                                 celula.Attributes = 46;
                                 celula.Char.AsciiChar = '@';
                             }
@@ -526,16 +555,26 @@ int main()
             }
 
 
-            // Cada casa ocupa duas colunas para parecer mais quadrada.
+            // ==================================================
+            // CADA CASA OCUPA DUAS COLUNAS
+            // ==================================================
+
             for (int i = 0; i < LINHAS; i++) {
 
                 for (int j = 0; j < COLUNAS; j++) {
-                    int destino = i * COLUNAS * 2 + j * 2;
 
-                    telaLarga[destino] = tela[i * COLUNAS + j];
-                    telaLarga[destino + 1] = telaLarga[destino];
+                    int destino =
+                        i * COLUNAS * 2 + j * 2;
 
-                    char simbolo = telaLarga[destino].Char.AsciiChar;
+                    telaLarga[destino] =
+                        tela[i * COLUNAS + j];
+
+                    telaLarga[destino + 1] =
+                        telaLarga[destino];
+
+                    char simbolo =
+                        telaLarga[destino].Char.AsciiChar;
+
 
                     if (simbolo == 'J') {
 
@@ -544,6 +583,7 @@ int main()
                     }
 
                     else if (simbolo == 'H') {
+
                         telaLarga[destino].Char.AsciiChar = 'E';
                         telaLarga[destino + 1].Char.AsciiChar = 'N';
                     }
@@ -553,11 +593,20 @@ int main()
                         telaLarga[destino].Char.AsciiChar = '(';
                         telaLarga[destino + 1].Char.AsciiChar = ')';
                     }
+
+                    else if (simbolo == '#')
+                    {
+                        // Mantem # nos dois lados da casa
+                        // para deixar o fogo mais visivel.
+                        telaLarga[destino].Char.AsciiChar = '#';
+                        telaLarga[destino + 1].Char.AsciiChar = '#';
+                    }
                 }
             }
 
 
-            // Atualiza o placar e o tempo da partida junto com o mapa.
+            // ==================== PLACAR ====================
+
             int inimigosRestantes = 0;
 
             for (int f = 0; f < NUM_FANTASMAS; f++)
@@ -566,46 +615,74 @@ int main()
                     inimigosRestantes++;
             }
 
-            long long segundosPartida = chrono::duration_cast<chrono::seconds>(
-                chrono::steady_clock::now() - inicioPartida).count();
+            long long segundosPartida =
+                chrono::duration_cast<chrono::seconds>(
+                    chrono::steady_clock::now() - inicioPartida
+                ).count();
 
             char placar[64];
             char cronometro[64];
 
-            snprintf(placar, sizeof(placar),
-                "Inimigos: %d", inimigosRestantes);
+            snprintf(
+                placar,
+                sizeof(placar),
+                "Inimigos: %d",
+                inimigosRestantes
+            );
 
-            int minutosPartida = static_cast<int>(segundosPartida / 60);
-            int segundosNoMinuto = static_cast<int>(segundosPartida % 60);
+            int minutosPartida =
+                static_cast<int>(segundosPartida / 60);
 
-            snprintf(cronometro, sizeof(cronometro),
+            int segundosNoMinuto =
+                static_cast<int>(segundosPartida % 60);
+
+            snprintf(
+                cronometro,
+                sizeof(cronometro),
                 "Tempo: %02d:%02d",
                 minutosPartida,
-                segundosNoMinuto);
+                segundosNoMinuto
+            );
 
-            const char* textosPainel[2] = { placar, cronometro };
+            const char* textosPainel[2] =
+            {
+                placar,
+                cronometro
+            };
 
             for (int linha = 0; linha < 2; linha++)
             {
                 bool fimTexto = false;
 
-                for (int coluna = 0; coluna < COLUNAS * 2; coluna++)
+                for (int coluna = 0;
+                     coluna < COLUNAS * 2;
+                     coluna++)
                 {
                     CHAR_INFO& celulaPainel =
-                        telaLarga[(LINHAS + linha) * COLUNAS * 2 + coluna];
+                        telaLarga[
+                            (LINHAS + linha) *
+                            COLUNAS * 2 +
+                            coluna
+                        ];
 
-                    if (!fimTexto && textosPainel[linha][coluna] == '\0')
+                    if (!fimTexto &&
+                        textosPainel[linha][coluna] == '\0')
+                    {
                         fimTexto = true;
+                    }
 
                     celulaPainel.Char.AsciiChar =
-                        fimTexto ? ' ' : textosPainel[linha][coluna];
+                        fimTexto ?
+                        ' ' :
+                        textosPainel[linha][coluna];
 
                     celulaPainel.Attributes = 15;
                 }
             }
 
 
-            // Envia o mapa inteiro ao console em uma unica chamada.
+            // ==================== ENVIA O MAPA AO CONSOLE ====================
+
             SMALL_RECT areaTela = {
                 coord.X,
                 coord.Y,
@@ -637,27 +714,36 @@ int main()
                 int novoY = y;
 
 
-                if (tecla == 72 || tecla == 'w' || tecla == 'W')
+                if (tecla == 72 ||
+                    tecla == 'w' ||
+                    tecla == 'W')
                 {
                     novoX--;
                 }
 
-                else if (tecla == 80 || tecla == 's' || tecla == 'S')
+                else if (tecla == 80 ||
+                         tecla == 's' ||
+                         tecla == 'S')
                 {
                     novoX++;
                 }
 
-                else if (tecla == 75 || tecla == 'a' || tecla == 'A')
+                else if (tecla == 75 ||
+                         tecla == 'a' ||
+                         tecla == 'A')
                 {
                     novoY--;
                 }
 
-                else if (tecla == 77 || tecla == 'd' || tecla == 'D')
+                else if (tecla == 77 ||
+                         tecla == 'd' ||
+                         tecla == 'D')
                 {
                     novoY++;
                 }
 
-                // ========== COLOCA A BOMBA ==========
+
+                // ==================== COLOCA A BOMBA ====================
 
                 else if (tecla == 32)
                 {
@@ -673,17 +759,18 @@ int main()
                     }
                 }
 
-                // ========== VERIFICA SE O JOGADOR PODE ANDAR ==========
+
+                // ==================== VERIFICA MOVIMENTO ====================
 
                 if (novoX >= 0 &&
                     novoX < LINHAS &&
                     novoY >= 0 &&
                     novoY < COLUNAS)
                 {
-                    if (m[novoX][novoY] == 0 &&             // VERIFICA SE A CASA TA LIVRE 
+                    if (m[novoX][novoY] == 0 &&
                         !(bombaAtiva &&
-                            novoX == bombaX &&
-                            novoY == bombaY))
+                          novoX == bombaX &&
+                          novoY == bombaY))
                     {
                         x = novoX;
                         y = novoY;
@@ -709,39 +796,48 @@ int main()
                 ultimoMovimentoFantasma =
                     chrono::steady_clock::now();
 
-                for (int f = 0; f < NUM_FANTASMAS; f++)
+                for (int f = 0;
+                     f < NUM_FANTASMAS;
+                     f++)
                 {
                     if (!fantasmaAtivo[f])
                         continue;
 
 
-                    // ==================================================
-                    // TENTA ATE 4 DIRECOES DIFERENTES
-                    // ==================================================
-
                     bool conseguiuMover = false;
 
-                    // Cria uma ordem aleatoria das quatro direcoes.
-                    int direcoes[4] = { 0, 1, 2, 3 };
+                    int direcoes[4] =
+                    {
+                        0, 1, 2, 3
+                    };
 
-                    // Embaralha as direcoes.
+
                     for (int i = 3; i > 0; i--)
                     {
                         int j = rand() % (i + 1);
 
                         int temp = direcoes[i];
-                        direcoes[i] = direcoes[j];
-                        direcoes[j] = temp;
+
+                        direcoes[i] =
+                            direcoes[j];
+
+                        direcoes[j] =
+                            temp;
                     }
 
 
-                    // Tenta cada uma das quatro direcoes.
-                    for (int tentativa = 0; tentativa < 4; tentativa++)
+                    for (int tentativa = 0;
+                         tentativa < 4;
+                         tentativa++)
                     {
-                        int direcao = direcoes[tentativa];
+                        int direcao =
+                            direcoes[tentativa];
 
-                        int novoX = fantasmaX[f];
-                        int novoY = fantasmaY[f];
+                        int novoX =
+                            fantasmaX[f];
+
+                        int novoY =
+                            fantasmaY[f];
 
 
                         if (direcao == 0)
@@ -757,8 +853,6 @@ int main()
                             novoY++;
 
 
-                        // ========== VERIFICA LIMITES DO MAPA ==========
-
                         if (novoX < 0 ||
                             novoX >= LINHAS ||
                             novoY < 0 ||
@@ -768,15 +862,11 @@ int main()
                         }
 
 
-                        // ========== VERIFICA PAREDES E BLOCOS ==========
-
                         if (m[novoX][novoY] != 0)
                         {
                             continue;
                         }
 
-
-                        // ========== VERIFICA BOMBA ==========
 
                         if (bombaAtiva &&
                             novoX == bombaX &&
@@ -786,11 +876,11 @@ int main()
                         }
 
 
-                        // ========== VERIFICA OUTROS FANTASMAS ==========
-
                         bool posicaoOcupada = false;
 
-                        for (int outro = 0; outro < NUM_FANTASMAS; outro++)
+                        for (int outro = 0;
+                             outro < NUM_FANTASMAS;
+                             outro++)
                         {
                             if (outro != f &&
                                 fantasmaAtivo[outro] &&
@@ -803,15 +893,11 @@ int main()
                         }
 
 
-                        // Se outro fantasma estiver ocupando
-                        // a casa, tenta outra direcao.
                         if (posicaoOcupada)
                         {
                             continue;
                         }
 
-
-                        // ========== MOVE O FANTASMA ==========
 
                         fantasmaX[f] = novoX;
                         fantasmaY[f] = novoY;
@@ -826,7 +912,9 @@ int main()
 
             // ==================== COLISAO COM FANTASMAS ====================
 
-            for (int f = 0; f < NUM_FANTASMAS; f++)
+            for (int f = 0;
+                 f < NUM_FANTASMAS;
+                 f++)
             {
                 if (fantasmaAtivo[f])
                 {
@@ -843,7 +931,8 @@ int main()
 
             if (bombaAtiva)
             {
-                agora = chrono::steady_clock::now();
+                agora =
+                    chrono::steady_clock::now();
 
                 chrono::milliseconds tempoBomba;
 
@@ -851,15 +940,21 @@ int main()
                     chrono::duration_cast<chrono::milliseconds>
                     (agora - inicioBomba);
 
+
                 if (tempoBomba.count() >= TEMPO_BOMBA)
                 {
                     bombaAtiva = false;
 
+
                     // ==================== LIMPA EXPLOSAO ANTIGA ====================
 
-                    for (int i = 0; i < LINHAS; i++)
+                    for (int i = 0;
+                         i < LINHAS;
+                         i++)
                     {
-                        for (int j = 0; j < COLUNAS; j++)
+                        for (int j = 0;
+                             j < COLUNAS;
+                             j++)
                         {
                             explosao[i][j] = false;
                         }
@@ -873,32 +968,52 @@ int main()
 
                     // ==================== DIRECOES DA EXPLOSAO ====================
 
-                    int dx[4] = { -1, 1, 0, 0 };
-                    int dy[4] = { 0, 0, -1, 1 };
-
-
-                    // ==================== FAZ A EXPLOSAO e ALCANCE ====================
-
-                    for (int d = 0; d < 4; d++)
+                    int dx[4] =
                     {
-                        for (int passo = 1; passo <= ALCANCE; passo++) {
+                        -1, 1, 0, 0
+                    };
 
-                            int nx = bombaX + dx[d] * passo;
-                            int ny = bombaY + dy[d] * passo;
+                    int dy[4] =
+                    {
+                        0, 0, -1, 1
+                    };
 
 
-                            if (nx < 0 || nx >= LINHAS || ny < 0 || ny >= COLUNAS) // == FOGO NAO SAIR DA TELA ==
+                    // ==================== FAZ A EXPLOSAO E ALCANCE ====================
+
+                    for (int d = 0;
+                         d < 4;
+                         d++)
+                    {
+                        for (int passo = 1;
+                             passo <= ALCANCE;
+                             passo++)
+                        {
+                            int nx =
+                                bombaX +
+                                dx[d] * passo;
+
+                            int ny =
+                                bombaY +
+                                dy[d] * passo;
+
+
+                            if (nx < 0 ||
+                                nx >= LINHAS ||
+                                ny < 0 ||
+                                ny >= COLUNAS)
                             {
                                 break;
                             }
 
-                            if (m[nx][ny] == 1)                 // == INDESTRUTIVEL ==S
+
+                            if (m[nx][ny] == 1)
                             {
                                 break;
                             }
 
 
-                            if (m[nx][ny] == 2)                     // === BLOCO DESTRUTIVEL ===
+                            if (m[nx][ny] == 2)
                             {
                                 explosao[nx][ny] = true;
 
@@ -907,7 +1022,8 @@ int main()
                                 break;
                             }
 
-                            explosao[nx][ny] = true;            // == DESENHA FOGO NA POSICAO ==
+
+                            explosao[nx][ny] = true;
                         }
                     }
 
@@ -918,9 +1034,11 @@ int main()
                         chrono::steady_clock::now();
 
 
-                    // ==================== VERIFICA QUAIS FANTASMAS FORAM ATINGIDOS ====================
+                    // ==================== VERIFICA FANTASMAS ATINGIDOS ====================
 
-                    for (int f = 0; f < NUM_FANTASMAS; f++)
+                    for (int f = 0;
+                         f < NUM_FANTASMAS;
+                         f++)
                     {
                         if (fantasmaAtivo[f])
                         {
@@ -942,29 +1060,37 @@ int main()
 
             if (explosaoAtiva)
             {
-                // Verifica a explosao durante todo o tempo em que ela permanece ativa.
-                // Assim, um fantasma que entrar no fogo depois da detonacao tambem morre.
-                for (int f = 0; f < NUM_FANTASMAS; f++)
+                for (int f = 0;
+                     f < NUM_FANTASMAS;
+                     f++)
                 {
                     if (fantasmaAtivo[f] &&
-                        explosao[fantasmaX[f]][fantasmaY[f]])
+                        explosao[
+                            fantasmaX[f]
+                        ][
+                            fantasmaY[f]
+                        ])
                     {
                         fantasmaAtivo[f] = false;
                     }
                 }
+
 
                 if (explosao[x][y])
                 {
                     gameOver = true;
                 }
 
-                agora = chrono::steady_clock::now();
+
+                agora =
+                    chrono::steady_clock::now();
 
                 chrono::milliseconds tempoExplosao;
 
                 tempoExplosao =
                     chrono::duration_cast<chrono::milliseconds>
                     (agora - inicioExplosao);
+
 
                 if (tempoExplosao.count() >= TEMPO_EXPLOSAO)
                 {
@@ -977,8 +1103,9 @@ int main()
 
             bool todosMortos = true;
 
-
-            for (int f = 0; f < NUM_FANTASMAS; f++)
+            for (int f = 0;
+                 f < NUM_FANTASMAS;
+                 f++)
             {
                 if (fantasmaAtivo[f])
                 {
@@ -1007,10 +1134,8 @@ int main()
         {
             GameOver();
 
-
-            // ==================== PERGUNTA SE QUER JOGAR NOVAMENTE ====================
-
-            jogarNovamente = TentarNovamente();
+            jogarNovamente =
+                TentarNovamente();
 
             if (jogarNovamente)
             {
