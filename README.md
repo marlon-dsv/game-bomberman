@@ -8,7 +8,6 @@
 #include <ctime>                //UTILIZADA PARA O RAND
 #include <mmsystem.h>           //REPRODUCAO DE MUSICA NO WINDOWS
 
-
 #pragma comment(lib, "winmm.lib")
 
 using namespace std;
