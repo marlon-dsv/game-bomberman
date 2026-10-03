@@ -1,4 +1,4 @@
-#include <cstdio>               //FORMATA O CRONOMETRO
+  #include <cstdio>               //FORMATA O CRONOMETRO
 #include <string>               //UTILIZADA PARA LER A OPCAO DO MENU
 #include <iostream>             //ENTRADA E SAIDA DE DADOS
 #include <windows.h>            //TRECHO QUE NAO DEVE SER MODIFICADO
