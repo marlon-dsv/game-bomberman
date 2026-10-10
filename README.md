@@ -6,7 +6,7 @@
 #include <chrono>               //UTILIZADA PARA TIRAR LENTIDAO
 #include <cstdlib>              //UTILIZADA PARA O RAND
 #include <ctime>                //UTILIZADA PARA O RAND
-#include <mmsystem.h>           //REPRODUCAO DE MUSICA NO WINDOW
+#include <mmsystem.h>           //REPRODUCAO DE MUSICA NO WINDOWS
 
 using namespace std;
 
