@@ -13,13 +13,11 @@ using namespace std;
 #pragma comment(lib, "winmm.lib")
 
 
-
 // ==================== MUSICA ====================
 
 bool IniciarMusicaMenu()
 {
-    // O Visual Studio pode iniciar o programa usando pastas diferentes.
-    // Por isso, o codigo testa tres caminhos ate encontrar musicamenu.wav.
+
     const char* caminhos[] =
     {
         "assets\\musicamenu.wav",
@@ -31,10 +29,7 @@ bool IniciarMusicaMenu()
     {
         if (GetFileAttributesA(caminhos[i]) != INVALID_FILE_ATTRIBUTES)
         {
-            // SND_FILENAME: informa que o som vem de um arquivo.
-            // SND_ASYNC: toca sem travar o menu ou o jogo.
-            // SND_LOOP: repete a musica enquanto ela nao for interrompida.
-            // SND_NODEFAULT: nao toca o som padrao do Windows se houver erro.
+
             BOOL iniciou = PlaySoundA(
                 caminhos[i],
                 NULL,
@@ -43,7 +38,6 @@ bool IniciarMusicaMenu()
 
             if (iniciou)
             {
-                // A musica foi encontrada e iniciada corretamente.
                 return true;
             }
         }
@@ -61,7 +55,51 @@ bool IniciarMusicaMenu()
 }
 
 
+// ==================== MUSICA DAS FASES ====================
+
+bool IniciarMusicaFase(int fase)
+{
+    const char* arquivo = "assets\\gorillaz.wav";
+
+    if (fase == 2)
+        arquivo = "assets\\rem.wav";
+    else if (fase == 3)
+        arquivo = "assets\\lp.wav";
+
+    const char* prefixos[] = { "", "..\\", "..\\..\\" };
+    char caminho[MAX_PATH];
+
+    for (int i = 0; i < 3; i++)
+    {
+        snprintf(caminho, sizeof(caminho), "%s%s", prefixos[i], arquivo);
+        if (GetFileAttributesA(caminho) != INVALID_FILE_ATTRIBUTES)
+        {
+            return PlaySoundA(caminho, NULL,
+                SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT) != FALSE;
+        }
+    }
+
+    cout << "Nao foi possivel encontrar a musica da fase: " << arquivo << "\n";
+    return false;
+}
+
+
 // ==================== MENU ====================
+
+void ConfigurarPaletaMostarda()
+{
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    CONSOLE_SCREEN_BUFFER_INFOEX info = {};
+    info.cbSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
+
+    if (GetConsoleScreenBufferInfoEx(console, &info))
+    {
+        info.ColorTable[14] = RGB(218, 165, 32); // Amarelo-mostarda para titulos existentes.
+        info.ColorTable[6] = RGB(255, 140, 0);    // Laranja para paredes indestrutiveis.
+        SetConsoleScreenBufferInfoEx(console, &info);
+    }
+}
 
 // Troca a cor dos proximos caracteres escritos com cout.
 void DefinirCor(WORD cor)
@@ -73,7 +111,7 @@ void DefinirCor(WORD cor)
 // Desenha somente a parte superior do menu.
 void DesenharTituloMenu()
 {
-    // Amarelo-claro.
+    // Amarelo-mostarda (definido na paleta do console).
     DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 
     cout << "+----------------------------------------------------+\n";
@@ -86,8 +124,6 @@ void DesenharTituloMenu()
 int Menu()
 {
     const int QUANTIDADE_OPCOES = 4;
-
-    // Esta e a ordem em que as opcoes aparecem na tela.
     string opcoes[QUANTIDADE_OPCOES] =
     {
         "JOGAR",
@@ -96,9 +132,6 @@ int Menu()
         "SAIR"
     };
 
-    // Os valores abaixo sao devolvidos para o main.
-    // Eles preservam a numeracao usada pela logica antiga:
-    // 1 = jogar, 2 = sair, 3 = como jogar e 4 = creditos.
     int resultado[QUANTIDADE_OPCOES] = { 1, 3, 4, 2 };
 
     int opcaoSelecionada = 0;
@@ -120,7 +153,7 @@ int Menu()
                 cout << "            ";
 
                 // O fundo amarelo comeca somente na caixa da opcao.
-                DefinirCor(BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_INTENSITY);
+                DefinirCor(BACKGROUND_RED | BACKGROUND_INTENSITY);
 
                 cout << "> [" << i + 1 << "] ";
                 cout << opcoes[i];
@@ -220,6 +253,7 @@ void Creditos() {
     DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
 
+
 void ComoJogar() {
     system("cls");
 
@@ -253,7 +287,10 @@ void ComoJogar() {
     cout << "        > Paredes solidas bloqueiam explosoes.\n";
     cout << "        > Nao encoste nos inimigos.\n";
     cout << "        > Afaste-se da sua propria bomba.\n";
-    cout << "        > Coloque apenas uma bomba por vez.\n\n";
+    cout << "        > Coloque apenas uma bomba por vez.\n";
+    cout << "        > Elimine os inimigos para liberar o portal < >.\n";
+    cout << "        > Entre no portal para avancar de fase.\n";
+    cout << "        > O chefe aparece na fase 3 e precisa de varias bombas.\n\n";
 
     DefinirCor(FOREGROUND_INTENSITY);
     cout << "+----------------------------------------------------+\n";
@@ -265,8 +302,29 @@ void ComoJogar() {
     DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
 
+
 void GameOver() {
     system("cls");
+
+    // Toca o grito durante a tela de Game Over por 5 segundos.
+    // Testa a pasta assets e os caminhos relativos usados pelo Visual Studio.
+    const char* caminhosGrito[] = {
+        "assets\\grito.wav",
+        "..\\assets\\grito.wav",
+        "..\\..\\assets\\grito.wav",
+        "grito.wav"
+    };
+
+    bool gritoIniciado = false;
+    for (int i = 0; i < 4; i++) {
+        if (GetFileAttributesA(caminhosGrito[i]) != INVALID_FILE_ATTRIBUTES) {
+            gritoIniciado = PlaySoundA(
+                caminhosGrito[i], NULL,
+                SND_FILENAME | SND_ASYNC | SND_NODEFAULT
+            ) != FALSE;
+            if (gritoIniciado) break;
+        }
+    }
 
     // Vermelho-claro para destacar a derrota.
     DefinirCor(FOREGROUND_RED | FOREGROUND_INTENSITY);
@@ -279,13 +337,11 @@ void GameOver() {
     DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
     cout << "                 Voce foi derrotado!\n";
     cout << "            Cuidado com inimigos e bombas.\n\n";
+    cout << "             Voltando em 5 segundos...\n";
 
-    DefinirCor(FOREGROUND_INTENSITY);
-    cout << "+----------------------------------------------------+\n";
-    cout << "|         PRESSIONE UMA TECLA PARA CONTINUAR         |\n";
-    cout << "+----------------------------------------------------+\n";
-
-    _getch();
+    // Mantem a tela visivel por 5 segundos sem exigir outra tecla.
+    Sleep(5000);
+    PlaySoundA(NULL, NULL, 0);
 
     DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
@@ -294,7 +350,7 @@ void GameOver() {
 void Vitoria() {
     system("cls");
 
-    // Amarelo-claro, seguindo o titulo do menu principal.
+    // Amarelo-mostarda, seguindo o titulo do menu principal.
     DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 
     cout << "+----------------------------------------------------+\n";
@@ -341,7 +397,7 @@ bool TentarNovamente()
         {
             DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
             cout << "            ";
-            DefinirCor(BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_INTENSITY);
+            DefinirCor(BACKGROUND_RED | BACKGROUND_INTENSITY);
             cout << "         > [1] SIM <          \n\n";
         }
         else
@@ -355,7 +411,7 @@ bool TentarNovamente()
         {
             DefinirCor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
             cout << "            ";
-            DefinirCor(BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_INTENSITY);
+            DefinirCor(BACKGROUND_RED | BACKGROUND_INTENSITY);
             cout << "         > [2] NAO <          \n\n";
         }
         else
@@ -410,6 +466,8 @@ bool TentarNovamente()
 
 int main()
 {
+    // Define o amarelo intenso do console como amarelo-mostarda.
+    ConfigurarPaletaMostarda();
 
     // Inicializa o gerador de numeros aleatorios uma unica vez.
     srand(static_cast<unsigned int>(time(NULL)));
@@ -504,11 +562,35 @@ int main()
         PlaySoundA(NULL, NULL, 0);
 
 
-        // ==================== JOGO ====================
+        // ==================== ESCOLHA DO NIVEL ====================
+        // O nivel define a fase, a quantidade de inimigos e a musica.
+        int faseAtual = 1;
+        int dificuldade = 1;
+        system("cls");
+        cout << "+----------------------------------------------------+\n";
+        cout << "|                    ESCOLHA O NIVEL                 |\n";
+        cout << "+----------------------------------------------------+\n\n";
+        cout << " [1] NIVEL 1 - 3 inimigos - Clint Eastwood, Gorillaz\n";
+        cout << " [2] NIVEL 2 - 5 inimigos - Losing my Religion, SCARY KIDS\n";
+        cout << " [3] NIVEL 3 - 7 + BOSS (3 vidas) - Emptiness Machine, Linkin Parkin\n\n";
+        cout << "Escolha (1, 2 ou 3): ";
+        while (true)
+        {
+            int teclaNivel = _getch();
+            if (teclaNivel >= '1' && teclaNivel <= '3')
+            {
+                faseAtual = teclaNivel - '0';
+                dificuldade = faseAtual;
+                break;
+            }
+        }
 
         bool jogarNovamente = true;
 
         while (jogarNovamente) {
+
+            // A musica correspondente comeca ao entrar em cada fase.
+            IniciarMusicaFase(faseAtual);
 
             // ==================== INICIO DO TRECHO QUE NAO PODE SER MODIFICADO ====================
 
@@ -575,7 +657,8 @@ int main()
                 int aleatorioX = 1 + rand() % (LINHAS - 2);
                 int aleatorioY = 1 + rand() % (COLUNAS - 2);
 
-                if (m[aleatorioX][aleatorioY] == 0)
+                if (m[aleatorioX][aleatorioY] == 0 &&
+                    !(aleatorioX == 9 && aleatorioY == 11))
                 {
                     bool pertoDoJogador = false;
 
@@ -603,17 +686,38 @@ int main()
             }
 
 
+            // O canto do portal fica como parede indestrutivel enquanto bloqueado.
+            // Quando todos os inimigos forem derrotados, essa casa vira portal.
+            m[9][11] = 1;
+
+            // Reserva uma casa livre para o chefe da terceira fase.
+            if (faseAtual == 3)
+                m[9][1] = 0;
+
             // ==================== FANTASMAS ====================
 
-            const int NUM_FANTASMAS = 5;
+            const int MAX_FANTASMAS = 7;
+            int NUM_FANTASMAS = (faseAtual == 1 ? 3 : (faseAtual == 2 ? 5 : 7));
 
-            int fantasmaX[NUM_FANTASMAS];
-            int fantasmaY[NUM_FANTASMAS];
+            int fantasmaX[MAX_FANTASMAS];
+            int fantasmaY[MAX_FANTASMAS];
 
-            bool fantasmaAtivo[NUM_FANTASMAS] =
+            bool fantasmaAtivo[MAX_FANTASMAS] =
             {
-                true, true, true, true, true
+                true, true, true, true, true, true, true
             };
+
+            // O portal fica no canto inferior direito e so abre quando
+            // todos os inimigos da fase forem derrotados.
+            const int portalX = 9;
+            const int portalY = 11;
+            bool portalLiberado = false;
+
+            // O chefe aparece na terceira fase e precisa receber tres explosoes.
+            bool bossAtivo = (faseAtual == 3);
+            int bossHP = 3;
+            int bossX = 9;
+            int bossY = 1;
 
 
             // ==================== NASCIMENTO ALEATORIO DOS FANTASMAS ====================
@@ -639,12 +743,27 @@ int main()
                         posicaoValida = false;
                     }
 
+                    if (novoX == portalX && novoY == portalY)
+                    {
+                        posicaoValida = false;
+                    }
+
+                    if (faseAtual == 3 && novoX == 9 && novoY == 1)
+                    {
+                        posicaoValida = false;
+                    }
+
                     if (novoX == 1 && novoY == 2)
                     {
                         posicaoValida = false;
                     }
 
                     if (novoX == 2 && novoY == 1)
+                    {
+                        posicaoValida = false;
+                    }
+
+                    if (bossAtivo && novoX == bossX && novoY == bossY)
                     {
                         posicaoValida = false;
                     }
@@ -666,6 +785,140 @@ int main()
                 }
             }
 
+
+            // ==================== NASCIMENTO ALEATORIO DO JOGADOR ====================
+
+            // ==================== NASCIMENTO ALEATORIO DO JOGADOR ====================
+
+            int maiorDistancia = -1;
+            int posicoesX[LINHAS * COLUNAS];
+            int posicoesY[LINHAS * COLUNAS];
+            int quantidadePosicoes = 0;
+
+            // Direcoes: cima, baixo, esquerda e direita.
+            int dxNascimento[4] = { -1, 1, 0, 0 };
+            int dyNascimento[4] = { 0, 0, -1, 1 };
+
+            // Procura casas livres, acessiveis e distantes dos fantasmas.
+            for (int i = 1; i < LINHAS - 1; i++)
+            {
+                for (int j = 1; j < COLUNAS - 1; j++)
+                {
+                    // A casa precisa estar livre e nao pode ser o portal bloqueado.
+                    if (m[i][j] != 0 || (i == portalX && j == portalY) ||
+                        (bossAtivo && i == bossX && j == bossY))
+                        continue;
+
+                    // Na fase 3, mantem o jogador a pelo menos 6 casas do chefe.
+                    if (bossAtivo && abs(i - bossX) + abs(j - bossY) < 6)
+                        continue;
+
+                    // Nao permite nascer na mesma casa de um fantasma.
+                    bool ocupadoPorFantasma = false;
+
+                    for (int f = 0; f < NUM_FANTASMAS; f++)
+                    {
+                        if (fantasmaAtivo[f] &&
+                            fantasmaX[f] == i &&
+                            fantasmaY[f] == j)
+                        {
+                            ocupadoPorFantasma = true;
+                            break;
+                        }
+                    }
+
+                    if (ocupadoPorFantasma)
+                        continue;
+
+                    // Conta quantas casas vizinhas estao livres.
+                    int saidasLivres = 0;
+
+                    for (int d = 0; d < 4; d++)
+                    {
+                        int nx = i + dxNascimento[d];
+                        int ny = j + dyNascimento[d];
+
+                        if (nx < 0 || nx >= LINHAS ||
+                            ny < 0 || ny >= COLUNAS)
+                        {
+                            continue;
+                        }
+
+                        // Somente casas livres podem ser usadas para sair.
+                        if (m[nx][ny] != 0)
+                            continue;
+
+                        // Evita considerar uma casa ocupada por fantasma
+                        // como uma saida segura.
+                        bool vizinhoComFantasma = false;
+
+                        for (int f = 0; f < NUM_FANTASMAS; f++)
+                        {
+                            if (fantasmaAtivo[f] &&
+                                fantasmaX[f] == nx &&
+                                fantasmaY[f] == ny)
+                            {
+                                vizinhoComFantasma = true;
+                                break;
+                            }
+                        }
+
+                        if (!vizinhoComFantasma)
+                            saidasLivres++;
+                    }
+
+                    // Exige pelo menos duas saidas livres para que o jogador tenha
+                    // espaco para escapar depois de colocar uma bomba.
+                    if (saidasLivres < 2)
+                        continue;
+
+                    // Calcula a distancia ate o fantasma mais proximo.
+                    int menorDistancia = LINHAS + COLUNAS;
+
+                    for (int f = 0; f < NUM_FANTASMAS; f++)
+                    {
+                        if (!fantasmaAtivo[f])
+                            continue;
+
+                        int distancia =
+                            abs(i - fantasmaX[f]) +
+                            abs(j - fantasmaY[f]);
+
+                        if (distancia < menorDistancia)
+                            menorDistancia = distancia;
+                    }
+
+                    // Mantem apenas as posicoes mais distantes dos fantasmas.
+                    if (menorDistancia > maiorDistancia)
+                    {
+                        maiorDistancia = menorDistancia;
+                        quantidadePosicoes = 0;
+                    }
+
+                    if (menorDistancia == maiorDistancia)
+                    {
+                        posicoesX[quantidadePosicoes] = i;
+                        posicoesY[quantidadePosicoes] = j;
+                        quantidadePosicoes++;
+                    }
+                }
+            }
+
+            // Sorteia uma das posicoes validas.
+            if (quantidadePosicoes > 0)
+            {
+                int posicaoEscolhida = rand() % quantidadePosicoes;
+
+                x = posicoesX[posicaoEscolhida];
+                y = posicoesY[posicaoEscolhida];
+            }
+            else
+            {
+                // Plano de seguranca: usa o canto inicial do mapa.
+                // A geracao aleatoria ja preserva essa area sem blocos.
+                x = 1;
+                y = 1;
+            }
 
             // ==================== TEMPO DOS FANTASMAS ====================
 
@@ -747,9 +1000,7 @@ int main()
 
                         CHAR_INFO& celula = tela[i * COLUNAS + j];
 
-                        // ==================================================
-                        // VERIFICA SE O JOGADOR ESTA SOBRE A BOMBA
-                        // ==================================================
+                        // ====================== VERIFICA SE O JOGADOR ESTA SOBRE A BOMBA ======================
 
                         bool jogadorSobreBomba =
                             bombaAtiva &&
@@ -758,9 +1009,7 @@ int main()
                             x == bombaX &&
                             y == bombaY;
 
-                        // ==================================================
-                        // PISCAR ENTRE JOGADOR E BOMBA
-                        // ==================================================
+                        // ====================== PISCAR ENTRE JOGADOR E BOMBA ======================
 
                         bool mostrarJogador =
                             jogadorSobreBomba &&
@@ -771,21 +1020,21 @@ int main()
 
                         if (i == x && j == y && !jogadorSobreBomba)
                         {
-                            celula.Attributes = 32;
+                            celula.Attributes = 240;
                             celula.Char.AsciiChar = 'J';
                         }
 
                         else if (jogadorSobreBomba && mostrarJogador)
                         {
-                            // Mostra o jogador.
-                            celula.Attributes = 32;
+                            // Mostra o jogador com fundo branco.
+                            celula.Attributes = 240;
                             celula.Char.AsciiChar = 'J';
                         }
 
                         else if (jogadorSobreBomba && !mostrarJogador)
                         {
                             // Mostra a bomba.
-                            celula.Attributes = 46;
+                            celula.Attributes = BACKGROUND_RED | BACKGROUND_INTENSITY; // Fundo vermelho e simbolo preto.
                             celula.Char.AsciiChar = '@';
                         }
 
@@ -797,8 +1046,24 @@ int main()
                                     i == fantasmaX[f] &&
                                     j == fantasmaY[f])
                                 {
-                                    celula.Attributes = 44;
-                                    celula.Char.AsciiChar = 'H';
+                                    bool fantasmaSobreBomba = bombaAtiva &&
+                                        i == bombaX && j == bombaY;
+                                    bool mostrarFantasma =
+                                        ((chrono::duration_cast<chrono::milliseconds>(
+                                            chrono::steady_clock::now() - inicioBomba
+                                        ).count() / 200) % 2 == 0);
+
+                                    if (fantasmaSobreBomba && !mostrarFantasma)
+                                    {
+                                        // Alterna entre EN e () enquanto o fantasma esta sobre a bomba.
+                                        celula.Attributes = BACKGROUND_RED | BACKGROUND_INTENSITY;
+                                        celula.Char.AsciiChar = '@';
+                                    }
+                                    else
+                                    {
+                                        celula.Attributes = 252;
+                                        celula.Char.AsciiChar = 'H';
+                                    }
 
                                     desenhouFantasma = true;
 
@@ -807,38 +1072,66 @@ int main()
                             }
 
 
+                            if (!desenhouFantasma && bossAtivo && i == bossX && j == bossY)
+                            {
+                                bool bossSobreBomba = bombaAtiva &&
+                                    i == bombaX && j == bombaY;
+                                bool mostrarBoss =
+                                    ((chrono::duration_cast<chrono::milliseconds>(
+                                        chrono::steady_clock::now() - inicioBomba
+                                    ).count() / 200) % 2 == 0);
+
+                                if (bossSobreBomba && !mostrarBoss)
+                                {
+                                    // Alterna entre BS e () enquanto o chefe esta sobre a bomba.
+                                    celula.Attributes = BACKGROUND_RED | BACKGROUND_INTENSITY;
+                                    celula.Char.AsciiChar = '@';
+                                }
+                                else
+                                {
+                                    celula.Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | BACKGROUND_RED;
+                                    celula.Char.AsciiChar = 'B';
+                                }
+                                desenhouFantasma = true;
+                            }
+
+                            if (!desenhouFantasma && i == portalX && j == portalY && portalLiberado)
+                            {
+                                celula.Attributes = FOREGROUND_GREEN | FOREGROUND_INTENSITY | BACKGROUND_BLUE;
+                                celula.Char.AsciiChar = 'O';
+                                desenhouFantasma = true;
+                            }
+
                             if (!desenhouFantasma) {
 
-                                // ==================================================
-                                // EXPLOSAO VERMELHA COM #
-                                // ==================================================
+                                //========================= EXPLOSAO VERMELHA =========================
+
 
                                 if (explosaoAtiva && explosao[i][j]) {
 
                                     // Fundo vermelho + texto vermelho claro.
                                     celula.Attributes = 68;
-
-                                    // Mostra # no lugar do fogo.
-                                    celula.Char.AsciiChar = '#';
                                 }
 
                                 else if (bombaAtiva &&
                                     i == bombaX &&
                                     j == bombaY) {
 
-                                    celula.Attributes = 46;
+                                    celula.Attributes = BACKGROUND_RED | BACKGROUND_INTENSITY; // Fundo vermelho e simbolo preto.
                                     celula.Char.AsciiChar = '@';
                                 }
 
                                 else {
 
                                     if (m[i][j] == 0) {
-                                        celula.Attributes = 32;
+                                        celula.Attributes = 16 | 1;
                                         celula.Char.AsciiChar = ' ';
                                     }
 
                                     else if (m[i][j] == 1) {
-                                        celula.Attributes = 8;
+                                        // Laranja: usa a cor 6 da paleta do console (ver ConfigurarPaletaMostarda).
+                                        // O caractere 219 ocupa toda a celula.
+                                        celula.Attributes = FOREGROUND_RED | FOREGROUND_GREEN;
                                         celula.Char.AsciiChar = char(219);
                                     }
 
@@ -853,9 +1146,7 @@ int main()
                 }
 
 
-                // ==================================================
-                // CADA CASA OCUPA DUAS COLUNAS
-                // ==================================================
+                // ========================== CADA CASA OCUPA DUAS COLUNAS =========================
 
                 for (int i = 0; i < LINHAS; i++) {
 
@@ -892,6 +1183,18 @@ int main()
                             telaLarga[destino + 1].Char.AsciiChar = ')';
                         }
 
+                        else if (simbolo == 'B')
+                        {
+                            telaLarga[destino].Char.AsciiChar = 'B';
+                            telaLarga[destino + 1].Char.AsciiChar = 'S';
+                        }
+
+                        else if (simbolo == 'O')
+                        {
+                            telaLarga[destino].Char.AsciiChar = '<';
+                            telaLarga[destino + 1].Char.AsciiChar = '>';
+                        }
+
                         else if (simbolo == '#')
                         {
                             // Mantem # nos dois lados da casa
@@ -913,6 +1216,9 @@ int main()
                         inimigosRestantes++;
                 }
 
+                if (bossAtivo)
+                    inimigosRestantes++;
+
                 long long segundosPartida =
                     chrono::duration_cast<chrono::seconds>(
                         chrono::steady_clock::now() - inicioPartida
@@ -924,7 +1230,8 @@ int main()
                 snprintf(
                     placar,
                     sizeof(placar),
-                    "Inimigos: %d",
+                    "Fase %d | Inimigos: %d",
+                    faseAtual,
                     inimigosRestantes
                 );
 
@@ -1066,6 +1373,7 @@ int main()
                         novoY < COLUNAS)
                     {
                         if (m[novoX][novoY] == 0 &&
+                            !(novoX == portalX && novoY == portalY && !portalLiberado) &&
                             !(bombaAtiva &&
                                 novoX == bombaX &&
                                 novoY == bombaY))
@@ -1110,17 +1418,46 @@ int main()
                         };
 
 
-                        for (int i = 3; i > 0; i--)
+                        int chancePerseguir = (faseAtual == 2 ? 50 : (faseAtual == 3 ? 75 : 0));
+                        bool perseguir = (chancePerseguir > 0 && rand() % 100 < chancePerseguir);
+
+                        if (perseguir)
                         {
-                            int j = rand() % (i + 1);
-
-                            int temp = direcoes[i];
-
-                            direcoes[i] =
-                                direcoes[j];
-
-                            direcoes[j] =
-                                temp;
+                            // Prioriza a direcao que aproxima o inimigo do jogador.
+                            if (abs(x - fantasmaX[f]) >= abs(y - fantasmaY[f]))
+                            {
+                                direcoes[0] = (x < fantasmaX[f] ? 0 : 1);
+                                direcoes[1] = (y < fantasmaY[f] ? 2 : 3);
+                            }
+                            else
+                            {
+                                direcoes[0] = (y < fantasmaY[f] ? 2 : 3);
+                                direcoes[1] = (x < fantasmaX[f] ? 0 : 1);
+                            }
+                            int restantes[4] = { 0, 1, 2, 3 };
+                            int listaRestante[2] = { -1, -1 };
+                            int nRestantes = 0;
+                            for (int d = 0; d < 4; d++)
+                            {
+                                bool jaExiste = false;
+                                for (int k = 0; k < 2; k++)
+                                    if (direcoes[k] == restantes[d]) jaExiste = true;
+                                if (!jaExiste && nRestantes < 2)
+                                    listaRestante[nRestantes++] = restantes[d];
+                            }
+                            if (nRestantes > 0) direcoes[2] = listaRestante[0];
+                            if (nRestantes > 1) direcoes[3] = listaRestante[1];
+                        }
+                        else
+                        {
+                            // Mantem o embaralhamento aleatorio original.
+                            for (int i = 3; i > 0; i--)
+                            {
+                                int j = rand() % (i + 1);
+                                int temp = direcoes[i];
+                                direcoes[i] = direcoes[j];
+                                direcoes[j] = temp;
+                            }
                         }
 
 
@@ -1166,14 +1503,6 @@ int main()
                             }
 
 
-                            if (bombaAtiva &&
-                                novoX == bombaX &&
-                                novoY == bombaY)
-                            {
-                                continue;
-                            }
-
-
                             bool posicaoOcupada = false;
 
                             for (int outro = 0;
@@ -1191,7 +1520,9 @@ int main()
                             }
 
 
-                            if (posicaoOcupada)
+                            // Impede que um fantasma entre na casa ocupada pelo chefe.
+                            if (posicaoOcupada ||
+                                (bossAtivo && novoX == bossX && novoY == bossY))
                             {
                                 continue;
                             }
@@ -1207,6 +1538,76 @@ int main()
                     }
                 }
 
+
+                // ==================== MOVIMENTACAO DO CHEFE ====================
+                if (bossAtivo && tempoFantasma.count() >= TEMPO_FANTASMA)
+                {
+                    // Primeiro tenta se aproximar do jogador.
+                    int direcoesX[4] = { -1, 1, 0, 0 };
+                    int direcoesY[4] = { 0, 0, -1, 1 };
+                    int ordem[4] = { 0, 1, 2, 3 };
+
+                    // Embaralha as direcoes para evitar que o chefe fique preso
+                    // tentando sempre o mesmo caminho bloqueado.
+                    for (int i = 3; i > 0; i--)
+                    {
+                        int j = rand() % (i + 1);
+                        int temp = ordem[i];
+                        ordem[i] = ordem[j];
+                        ordem[j] = temp;
+                    }
+
+                    int melhorDirecao = -1;
+                    int menorDistanciaJogador = abs(x - bossX) + abs(y - bossY);
+
+                    for (int d = 0; d < 4; d++)
+                    {
+                        int nx = bossX + direcoesX[d];
+                        int ny = bossY + direcoesY[d];
+                        if (nx < 1 || nx >= LINHAS - 1 || ny < 1 || ny >= COLUNAS - 1 ||
+                            m[nx][ny] != 0 || (nx == portalX && ny == portalY))
+                            continue;
+
+                        bool ocupado = false;
+                        for (int f = 0; f < NUM_FANTASMAS; f++)
+                            if (fantasmaAtivo[f] && fantasmaX[f] == nx && fantasmaY[f] == ny)
+                                ocupado = true;
+                        if (ocupado) continue;
+
+                        int distancia = abs(x - nx) + abs(y - ny);
+                        if (distancia < menorDistanciaJogador)
+                        {
+                            menorDistanciaJogador = distancia;
+                            melhorDirecao = d;
+                        }
+                    }
+
+                    // Se nao conseguir se aproximar, anda para qualquer casa valida.
+                    // So fica parado se nao houver nenhuma casa para onde possa ir.
+                    if (melhorDirecao == -1)
+                    {
+                        for (int i = 0; i < 4; i++)
+                        {
+                            int d = ordem[i];
+                            int nx = bossX + direcoesX[d];
+                            int ny = bossY + direcoesY[d];
+                            if (nx < 1 || nx >= LINHAS - 1 || ny < 1 || ny >= COLUNAS - 1 ||
+                                m[nx][ny] != 0 || (nx == portalX && ny == portalY))
+                                continue;
+                            bool ocupado = false;
+                            for (int f = 0; f < NUM_FANTASMAS; f++)
+                                if (fantasmaAtivo[f] && fantasmaX[f] == nx && fantasmaY[f] == ny)
+                                    ocupado = true;
+                            if (!ocupado) { melhorDirecao = d; break; }
+                        }
+                    }
+
+                    if (melhorDirecao != -1)
+                    {
+                        bossX += direcoesX[melhorDirecao];
+                        bossY += direcoesY[melhorDirecao];
+                    }
+                }
 
                 // ==================== COLISAO COM FANTASMAS ====================
 
@@ -1224,6 +1625,9 @@ int main()
                     }
                 }
 
+
+                if (bossAtivo && x == bossX && y == bossY)
+                    gameOver = true;
 
                 // ==================== CONTAGEM BOMBA ====================
 
@@ -1350,6 +1754,13 @@ int main()
                                 }
                             }
                         }
+
+                        // O chefe perde um ponto de vida por explosao que o atingir.
+                        if (bossAtivo && explosao[bossX][bossY])
+                        {
+                            bossHP--;
+                            if (bossHP <= 0) bossAtivo = false;
+                        }
                     }
                 }
 
@@ -1358,22 +1769,8 @@ int main()
 
                 if (explosaoAtiva)
                 {
-                    for (int f = 0;
-                        f < NUM_FANTASMAS;
-                        f++)
-                    {
-                        if (fantasmaAtivo[f] &&
-                            explosao[
-                                fantasmaX[f]
-                            ][
-                                fantasmaY[f]
-                            ])
-                        {
-                            fantasmaAtivo[f] = false;
-                        }
-                    }
-
-
+                    // Fantasmas e chefe so sao atingidos no instante em que a bomba
+                    // explode. Permanecer ou atravessar o efeito visual nao causa morte.
                     if (explosao[x][y])
                     {
                         gameOver = true;
@@ -1397,7 +1794,7 @@ int main()
                 }
 
 
-                // ==================== CASO VITORIA ====================
+                // ==================== PORTAL E PROXIMA FASE ====================
 
                 bool todosMortos = true;
 
@@ -1406,15 +1803,23 @@ int main()
                     f++)
                 {
                     if (fantasmaAtivo[f])
-                    {
                         todosMortos = false;
-                    }
                 }
 
-                if (todosMortos)
-                {
+                if (bossAtivo)
+                    todosMortos = false;
+
+                portalLiberado = todosMortos;
+
+                // O bloco indestrutivel do canto vira portal quando todos morrerem.
+                if (portalLiberado)
+                    m[portalX][portalY] = 0;
+                else
+                    m[portalX][portalY] = 1;
+
+                // A fase so termina quando o jogador entra no portal liberado.
+                if (portalLiberado && x == portalX && y == portalY)
                     venceu = true;
-                }
 
 
                 // ==================== SAI DO JOGO ====================
@@ -1430,6 +1835,7 @@ int main()
 
             if (gameOver)
             {
+                PlaySoundA(NULL, NULL, 0);
                 GameOver();
 
                 jogarNovamente =
@@ -1451,9 +1857,23 @@ int main()
 
             if (venceu)
             {
-                Vitoria();
+                PlaySoundA(NULL, NULL, 0);
 
-                jogarNovamente = false;
+                if (faseAtual < 3)
+                {
+                    system("cls");
+                    cout << "FASE " << faseAtual << " CONCLUIDA!\n";
+                    cout << "Voce encontrou o portal. Preparando a proxima fase...\n\n";
+                    system("pause");
+                    faseAtual++;
+                    // Reinicia o mapa, preservando a dificuldade escolhida.
+                    continue;
+                }
+                else
+                {
+                    Vitoria();
+                    jogarNovamente = false;
+                }
             }
         }
 
@@ -1466,3 +1886,6 @@ int main()
     PlaySoundA(NULL, NULL, 0);
     return 0;
 }
+
+
+PARTE 2 EM ANDAMENTO
